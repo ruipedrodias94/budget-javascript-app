@@ -49,25 +49,48 @@ var budgetController = (function () {
 	return {
 		// Add new item to our data structure
 		addItem: function (type, description, value) {
-			var idObject, newItem;
+			var newItem, ID;
 
-			// Calculate the id number of the object in cause
-			if (dataBudget.allItems[type].lenght > 0) {
-				idObject = dataBudget.allItems[type][dataBudget.allItems[type] - 1].id + 1;
+			//[1 2 3 4 5], next ID = 6
+			//[1 2 4 6 8], next ID = 9
+			// ID = last ID + 1
+
+			// Create new ID
+			if (dataBudget.allItems[type].length > 0) {
+				ID = dataBudget.allItems[type][dataBudget.allItems[type].length - 1].id + 1;
 			} else {
-				idObject = 0;
+				ID = 0;
 			}
 
-			// Create the object
-			if (type === "exp") {
-				newItem = new Expense(idObject, description, value);
-			} else {
-				newItem = new Income(idObject, description, value);
+			// Create new item based on 'inc' or 'exp' type
+			if (type === 'exp') {
+				newItem = new Expense(ID, description, value);
+			} else if (type === 'inc') {
+				newItem = new Income(ID, description, value);
 			}
 
-			// Add the object to the array
+			// Push it into our data structure
 			dataBudget.allItems[type].push(newItem);
+
+			console.log("Item id:: " + ID);
+
+			// Return the new element
 			return newItem;
+		},
+
+		deleteItem: function (typeOperation, idOperation) {
+
+			var ids, index;
+
+			ids = dataBudget.allItems[typeOperation].map(function (current) {
+				return current.id;
+			});
+
+			index = ids.indexOf(idOperation);
+
+			if (index !== -1) {
+				dataBudget.allItems[typeOperation].splice(index, 1);
+			}
 		},
 
 		// Calculate the Budget
@@ -120,7 +143,7 @@ var uiController = (function () {
 		budgetIncome: ".budget__income--value",
 		budgetExpenses: ".budget__expenses--value",
 		percentage: ".budget__expenses--percentage",
-		container: ".container clearfix"
+		container: ".container"
 	};
 
 	// Get the input data
@@ -143,10 +166,10 @@ var uiController = (function () {
 
 			if (type === "inc") {
 				elementDOM = DOMStrings.incomes;
-				html = '<div class="item clearfix" id="income-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
+				html = '<div class="item clearfix" id="inc-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
 			} else {
 				elementDOM = DOMStrings.expenses;
-				html = '<div class="item clearfix" id="expense-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__percentage">21%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
+				html = '<div class="item clearfix" id="exp-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__percentage">21%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
 			}
 
 			// Replace the placeholder
@@ -155,6 +178,14 @@ var uiController = (function () {
 			newHtml = newHtml.replace("%value%", object.value);
 
 			document.querySelector(elementDOM).insertAdjacentHTML("beforeend", newHtml);
+		},
+
+		deleteItemList: function (selectorID) {
+
+			// Get the parent and delete the child
+			var elementChild = document.getElementById(selectorID);
+			elementChild.parentNode.removeChild(elementChild);
+
 		},
 
 		// Clear all the inputs
@@ -200,6 +231,9 @@ var controllerApp = (function (bdgCtrl, uiCtrl) {
 				contrlAddItem();
 			}
 		});
+
+		document.querySelector(DOMStrings.container).addEventListener("click", ctrlDeleteItem);
+
 	};
 
 	var updateBudget = function (typeOperation) {
@@ -219,15 +253,43 @@ var controllerApp = (function (bdgCtrl, uiCtrl) {
 
 		// Check the integrity of the data
 		if (inputs.description !== "" && !isNaN(inputs.value)) {
+
 			// 2. Send the data to the budget controller
 			newItem = bdgCtrl.addItem(inputs.typeOperation, inputs.description, inputs.value);
 
 			// 3. Calculate the budget (budget controller)
 			uiCtrl.addItemList(newItem, inputs.typeOperation);
 			uiCtrl.clearInputs();
+
 			// 4. Update the Ui controller (add the item and display them)
 
 			updateBudget(inputs.typeOperation);
+		}
+	};
+
+	var ctrlDeleteItem = function (event) {
+
+		var itemID, splitID, type, id;
+
+		itemID = (event.target.parentNode.parentNode.parentNode.parentNode.id);
+
+		if (itemID) {
+
+			// The id has the inc-1 structure
+
+			splitID = itemID.split("-");
+			type = splitID[0];
+			id = parseInt(splitID[1]);
+
+			console.log(splitID);
+			// 1. Delete the item from the data structure
+			budgetController.deleteItem(type, id);
+
+			// 2. Delete the item from the UI
+			uiController.deleteItemList(itemID);
+
+			// 3. Update and show the new UI
+			updateBudget(type);
 		}
 	};
 
